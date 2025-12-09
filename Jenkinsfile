@@ -1,6 +1,3 @@
-cd C:\Users\vedan\myapp
-
-@'
 pipeline {
   agent any
 
@@ -75,4 +72,3 @@ pipeline {
     failure { echo "Pipeline FAILED" }
   }
 }
-'@ > Jenkinsfile
