@@ -3,9 +3,8 @@ pipeline {
 
   environment {
     DOCKER_IMAGE = "vedantoncloud/myapp"
-    # Optional: set these in Jenkins Credentials if you add them later
-    # RENDER_HOOK = credentials('render-hook')
-    # DOCKERHUB_CREDS = 'dockerhub-creds'
+    // If you add a Render hook credential in Jenkins, set its ID as 'render-hook' and uncomment next line:
+    // RENDER_HOOK = credentials('render-hook')
   }
 
   stages {
@@ -45,16 +44,14 @@ pipeline {
       }
     }
 
-    // Optional docker stage — disabled by default. Enable by setting BUILD_DOCKER=true as a Build Parameter.
     stage('Docker Build & Push (optional)') {
       when { expression { return env.BUILD_DOCKER == 'true' } }
       steps {
         powershell label: 'docker build & push', script: '''
           Write-Output "Building docker image..."
-          docker build -t %DOCKER_IMAGE%:%BUILD_NUMBER% .
-          docker tag %DOCKER_IMAGE%:%BUILD_NUMBER% %DOCKER_IMAGE%:latest
-          # For secure Docker Hub push, create Jenkins credentials and call docker login via credential helper or configure daemon.
-          Write-Output "Docker build done (pushing requires credentials)."
+          docker build -t $env:DOCKER_IMAGE:$env:BUILD_NUMBER .
+          docker tag $env:DOCKER_IMAGE:$env:BUILD_NUMBER $env:DOCKER_IMAGE:latest
+          Write-Output "Docker build done (push requires Docker Hub credentials)."
         '''
       }
     }
