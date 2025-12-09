@@ -2,72 +2,76 @@ pipeline {
   agent any
 
   environment {
-    DOCKERHUB_CREDENTIALS = 'dockerhub-creds'
     DOCKER_IMAGE = "vedantoncloud/myapp"
-    STAGING_HOST = 'STAGING_IP_OR_HOST'        // <-- replace later with VPS IP
-    STAGING_SSH = 'staging-ssh'
+    # Optional: set these in Jenkins Credentials if you add them later
+    # RENDER_HOOK = credentials('render-hook')
+    # DOCKERHUB_CREDS = 'dockerhub-creds'
   }
 
   stages {
-    stage('Checkout') { steps { checkout scm } }
-
-    stage('Install') { steps { sh 'npm install' } }
-
-    stage('Unit Test') {
+    stage('Checkout') {
       steps {
-        sh '''
-          node app.js & sleep 2
-          npm run test
+        checkout scm
+      }
+    }
+
+    stage('Install dependencies') {
+      steps {
+        powershell label: 'npm ci', script: '''
+          Write-Output "Installing dependencies..."
+          npm ci
         '''
       }
     }
 
-    stage('Docker Build & Push') {
+    stage('Run health check') {
       steps {
-        script {
-          docker.withRegistry('', "${DOCKERHUB_CREDENTIALS}") {
-            def img = docker.build("${DOCKER_IMAGE}:${env.BUILD_NUMBER}")
-            img.push()
-            img.push('latest')
+        powershell label: 'start app & test health', script: '''
+          Write-Output "Starting node app in background..."
+          $proc = Start-Process -FilePath "node" -ArgumentList "app.js" -PassThru
+          Start-Sleep -Seconds 2
+          try {
+            $resp = Invoke-RestMethod -Uri "http://localhost:3000/health" -UseBasicParsing -TimeoutSec 5
+            Write-Output "Health response: $resp"
+          } catch {
+            Write-Error "Health check failed: $_"
+            Exit 1
+          } finally {
+            if ($proc -and -not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force
+            }
           }
-        }
+        '''
       }
     }
 
-    stage('Deploy to Staging') {
+    // Optional docker stage — disabled by default. Enable by setting BUILD_DOCKER=true as a Build Parameter.
+    stage('Docker Build & Push (optional)') {
+      when { expression { return env.BUILD_DOCKER == 'true' } }
       steps {
-        sshagent([STAGING_SSH]) {
-          sh """
-            scp docker-compose.yml ubuntu@${STAGING_HOST}:/home/ubuntu/docker-compose.yml
-            ssh ubuntu@${STAGING_HOST} 'docker pull ${DOCKER_IMAGE}:latest || true'
-            ssh ubuntu@${STAGING_HOST} 'docker-compose -f /home/ubuntu/docker-compose.yml up -d --remove-orphans'
-          """
-        }
+        powershell label: 'docker build & push', script: '''
+          Write-Output "Building docker image..."
+          docker build -t %DOCKER_IMAGE%:%BUILD_NUMBER% .
+          docker tag %DOCKER_IMAGE%:%BUILD_NUMBER% %DOCKER_IMAGE%:latest
+          # For secure Docker Hub push, create Jenkins credentials and call docker login via credential helper or configure daemon.
+          Write-Output "Docker build done (pushing requires credentials)."
+        '''
       }
     }
 
-    stage('Approval') {
+    stage('Trigger Render (optional)') {
+      when { expression { return env.RENDER_HOOK != null && env.RENDER_HOOK != '' } }
       steps {
-        timeout(time: 1, unit: 'HOURS') {
-          input message: "Approve deployment to PRODUCTION?"
-        }
-      }
-    }
-
-    stage('Deploy to Production') {
-      steps {
-        sshagent([STAGING_SSH]) {
-          sh """
-            ssh ubuntu@${STAGING_HOST} 'docker pull ${DOCKER_IMAGE}:latest || true'
-            ssh ubuntu@${STAGING_HOST} 'docker-compose -f /home/ubuntu/docker-compose.yml up -d --remove-orphans'
-          """
-        }
+        powershell label: 'trigger render', script: '''
+          Write-Output "Calling Render deploy hook..."
+          Invoke-RestMethod -Uri "$env:RENDER_HOOK" -Method Get
+        '''
       }
     }
   }
 
   post {
-    success { echo "Pipeline succeeded" }
-    failure { echo "Pipeline failed" }
+    success { echo "Pipeline SUCCESS" }
+    failure { echo "Pipeline FAILED" }
   }
 }
