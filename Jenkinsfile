@@ -1,9 +1,12 @@
+cd C:\Users\vedan\myapp
+
+@'
 pipeline {
   agent any
 
   environment {
     DOCKER_IMAGE = "vedantoncloud/myapp"
-    // If you add a Render hook credential in Jenkins, set its ID as 'render-hook' and uncomment next line:
+    // If you add a Render hook credential in Jenkins, set its ID as 'render-hook' and uncomment the next line
     // RENDER_HOOK = credentials('render-hook')
   }
 
@@ -72,3 +75,4 @@ pipeline {
     failure { echo "Pipeline FAILED" }
   }
 }
+'@ > Jenkinsfile
