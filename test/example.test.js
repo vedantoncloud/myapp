@@ -1,3 +1,5 @@
-test("Vedant simple test", () => {
-  expect(2 + 2).toBe(4);
+﻿const app = require('../app');
+
+test('basic hello test', () => {
+  expect(app.hello()).toBe('Hello from MyApp - dev');
 });
