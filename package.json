@@ -1,12 +1,14 @@
 {
   "name": "myapp",
   "version": "1.0.0",
+  "description": "Clean start - minimal app for CI",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "test": "jest"
+    "test": "jest --runInBand --detectOpenHandles"
   },
   "devDependencies": {
     "jest": "^30.2.0"
-  }
+  },
+  "dependencies": {}
 }
