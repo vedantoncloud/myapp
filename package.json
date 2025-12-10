@@ -4,6 +4,9 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "test": "node test.js"
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
   }
 }
