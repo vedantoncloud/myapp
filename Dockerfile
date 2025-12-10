@@ -1,7 +1,20 @@
+# Use official Node image
 FROM node:18-alpine
-WORKDIR /app
+
+# App working directory
+WORKDIR /usr/src/app
+
+# Copy package files first
 COPY package*.json ./
-RUN npm install --only=prod
+
+# Install ONLY production dependencies (faster, cleaner)
+RUN npm ci --only=production
+
+# Copy all source code
 COPY . .
-ENV PORT=3000
+
+# Expose port (important for Render)
+EXPOSE 3000
+
+# Start the app
 CMD ["node", "app.js"]
