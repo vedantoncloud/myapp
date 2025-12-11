@@ -1,3 +1,4 @@
+![CI](https://github.com/vedantoncloud/myapp/actions/workflows/ci.yml/badge.svg)
 # MyApp — Serverless Web App (CI/CD Project)
 
 **Student:** Vedant Mishra  
